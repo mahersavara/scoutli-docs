@@ -21,3 +21,9 @@ This repository serves as the central knowledge base for the Scoutli project. It
 ### 4. Guides & References
 *   [**Tool Definitions & Guide**](TOOL_DEFINITIONS_AND_GUIDE.md): Reference for tools like Terraform, Helm, ArgoCD.
 *   [**TODO**](TODO.md): Pending tasks and roadmap.
+
+### 5. Kafka Event-Driven Architecture
+*   [**Kafka Start Here**](kafka/KAFKA_START_HERE.md): Begin your Kafka learning journey here!
+*   [**Kafka & Quarkus Guide**](kafka/KAFKA_QUARKUS_GUIDE.md): Theory, concepts, and best practices.
+*   [**Implementation Guide**](kafka/KAFKA_IMPLEMENTATION_GUIDE.md): Step-by-step implementation from scratch.
+*   [**Cleanup Checklist**](kafka/CLEANUP_CHECKLIST.md): Remove existing incomplete Kafka code.

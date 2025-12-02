@@ -1,114 +1,122 @@
-# Đặc tả Kỹ thuật Chi tiết - Dự án Scoutli (v2)
+# Detailed Technical Specification - Scoutli Project (v2 - Microservices)
 
-Tài liệu này trình bày chi tiết các yêu cầu về mặt kỹ thuật để xây dựng lại dự án Scoutli, bao gồm Mô hình Dữ liệu, API Backend, cấu trúc Frontend, và các yêu cầu phi chức năng.
-
----
-
-### 1. Mô hình Dữ liệu (Data Models)
-Cấu trúc cho các bảng trong cơ sở dữ liệu PostgreSQL.
-
-- **Bảng `users`**
-  - `id`: `BIGINT`, Primary Key, Auto-increment
-  - `email`: `VARCHAR(255)`, Not Null, Unique
-  - `password_hash`: `VARCHAR(255)`, Not Null
-  - `role`: `VARCHAR(50)`, Not Null, Default: `'MEMBER'` (Giá trị: 'MEMBER', 'MODERATOR', 'ADMIN')
-
-- **Bảng `discoveries`**
-  - `id`: `BIGINT`, Primary Key, Auto-increment
-  - `name`: `VARCHAR(255)`, Not Null
-  - `description`: `TEXT`
-  - `street_address`: `VARCHAR(255)`
-  - `city`: `VARCHAR(255)`
-  - `country`: `VARCHAR(255)`
-  - `latitude`: `DOUBLE PRECISION`
-  - `longitude`: `DOUBLE PRECISION`
-  - `user_id`: `BIGINT`, Not Null, Foreign Key tới `users(id)`
-
-- **Bảng `comments`**
-  - `id`: `BIGINT`, Primary Key, Auto-increment
-  - `content`: `TEXT`, Not Null
-  - `created_at`: `TIMESTAMP`, Not Null
-  - `user_id`: `BIGINT`, Not Null, Foreign Key tới `users(id)`
-  - `discovery_id`: `BIGINT`, Not Null, Foreign Key tới `discoveries(id)`
-
-- **Bảng `ratings`**
-  - `id`: `BIGINT`, Primary Key, Auto-increment
-  - `score`: `INTEGER`, Not Null (giá trị từ 1 đến 5)
-  - `user_id`: `BIGINT`, Not Null, Foreign Key tới `users(id)`
-  - `discovery_id`: `BIGINT`, Not Null, Foreign Key tới `discoveries(id)`
-  - **Constraint:** `UNIQUE(user_id, discovery_id)`
-
-- **Bảng `tags`**
-  - `id`: `BIGINT`, Primary Key, Auto-increment
-  - `name`: `VARCHAR(255)`, Not Null, Unique
-
-- **Bảng `discovery_tags` (Bảng trung gian Many-to-Many)**
-  - `discovery_id`: `BIGINT`, Foreign Key tới `discoveries(id)`
-  - `tag_id`: `BIGINT`, Foreign Key tới `tags(id)`
-  - **Constraint:** `PRIMARY KEY(discovery_id, tag_id)`
+This document details the technical requirements and architecture for the Scoutli project, re-architected as a Microservices application on AWS EKS.
 
 ---
 
-### 2. API Backend (RESTful API)
-Giao tiếp giữa Backend (Quarkus) và Frontend (Angular) qua RESTful API, sử dụng JWT (JSON Web Tokens) để xác thực.
+## 1. System Architecture
 
-- **Authentication**
-  - `POST /api/users/register`: Đăng ký user mới.
-  - `POST /api/users/login`: Đăng nhập.
+The system follows a **Microservices Architecture** deployed on **AWS EKS**.
 
-- **Discoveries**
-  - `GET /api/discoveries`: Lấy danh sách discoveries (đã phân trang).
-    - **Query Params:** `?tag=...`, `?latitude=...&longitude=...&radius=...`, `?page=0&size=20`
-    - **Success Response:** `200 OK`, Body: `{ "content": [ { discovery_summary_1 }, ... ], "totalPages": 10, "totalElements": 198, ... }`
-  - `POST /api/discoveries`: Tạo discovery mới (Yêu cầu token).
-  - `GET /api/discoveries/{id}`: Lấy chi tiết một discovery.
-    - **Success Response:** `200 OK`, Body: `{ "id": 1, "name": "...", "user": { "id": 1, "email": "..." }, "tags": [ { "name": "coffee" } ], ... }`
-  - `PUT /api/discoveries/{id}`: Cập nhật discovery (Yêu cầu token, check quyền).
-  - `DELETE /api/discoveries/{id}`: Xóa discovery (Yêu cầu token, check quyền).
-
-- **Comments**
-  - `GET /api/discoveries/{discoveryId}/comments`: Lấy danh sách comment (đã phân trang).
-  - `POST /api/discoveries/{discoveryId}/comments`: Tạo comment mới (Yêu cầu token).
-  - `DELETE /api/comments/{id}`: Xóa comment (Yêu cầu token, check quyền).
-
-- **Ratings**
-  - `POST /api/discoveries/{discoveryId}/ratings`: Tạo hoặc cập nhật rating (Yêu cầu token).
-
----
-
-### 3. Thành phần Frontend (Angular Components)
-- `NavbarComponent`, `FooterComponent`
-- `DiscoveryListComponent`, `DiscoveryMapComponent`, `DiscoveryCardComponent`
-- `DiscoveryDetailComponent`, `CommentSectionComponent`, `RatingComponent`
-- `LoginComponent`, `RegisterComponent`
-- `PaginatorComponent`: Component tái sử dụng để hiển thị thanh phân trang.
+### 1.1. Key Components
+*   **Frontend:** Single Page Application (SPA) built with **Angular**.
+*   **Backend:** Multiple microservices built with **Java (Quarkus)**.
+    *   `scoutli-auth-service`: Manages Users, Authentication, JWT.
+    *   `scoutli-discovery-service`: Manages Locations/Discoveries, Categories.
+    *   `scoutli-interaction-service`: Manages Reviews, Ratings, Comments.
+*   **Database:** **PostgreSQL** (AWS RDS) running version 16.6. Separate logical databases/schemas per service.
+*   **Container Registry:** **AWS ECR** for storing Docker images.
+*   **Infrastructure Orchestration:** **Kubernetes (AWS EKS)** version 1.34.
+*   **Infrastructure as Code (IaC):** **Terraform** for provisioning VPC, EKS, RDS, ECR.
+*   **CI/CD:**
+    *   **CI:** **GitHub Actions** (Build & Push to ECR).
+    *   **CD/GitOps:** **ArgoCD** (Syncs from `scoutli-gitops` repo to EKS).
+*   **Ingress & SSL:**
+    *   **NGINX Ingress Controller:** Single entry point via AWS Network Load Balancer (NLB).
+    *   **Cert-Manager:** Automates Let's Encrypt SSL certificates.
+    *   **Domains:**
+        *   `www.journeywriter.space` -> Frontend
+        *   `argocd.journeywriter.space` -> ArgoCD UI
 
 ---
 
-### 4. Yêu cầu Phi chức năng (Non-Functional Requirements)
+## 2. Data Models (PostgreSQL)
 
-- **Validation (Kiểm tra dữ liệu)**
-  - `User`: `email` phải có định dạng hợp lệ. `password` phải có ít nhất 8 ký tự.
-  - `Discovery`: `name` là trường bắt buộc, không được để trống.
-  - `Comment`: `content` là trường bắt buộc.
-  - `Rating`: `score` phải là số nguyên từ 1 đến 5.
+### 2.1. Auth Service (`scoutli_auth` database)
+- **Table `users`**
+  - `id`: `BIGSERIAL` (Long), Primary Key.
+  - `email`: `VARCHAR(255)`, Unique, Not Null.
+  - `password`: `VARCHAR(255)`, Not Null.
+  - `full_name`: `VARCHAR(255)`.
+  - `roles`: `VARCHAR(255)` (Comma-separated roles).
+  - `created_at`, `updated_at`: `TIMESTAMP`.
 
-- **Error Handling (Xử lý lỗi API)**
-  - `400 Bad Request`: Trả về khi dữ liệu đầu vào không hợp lệ (validation failed). Response body nên chứa chi tiết lỗi cho từng trường.
-  - `401 Unauthorized`: Trả về khi request thiếu hoặc có token JWT không hợp lệ.
-  - `403 Forbidden`: Trả về khi người dùng không có quyền thực hiện hành động (ví dụ: xóa discovery của người khác khi không phải admin).
-  - `404 Not Found`: Trả về khi không tìm thấy tài nguyên (ví dụ: `GET /api/discoveries/999` với id không tồn tại).
+### 2.2. Discovery Service (`scoutli_discovery` database)
+- **Table `locations`** (formerly `discoveries`)
+  - `id`: `BIGSERIAL`, Primary Key.
+  - `name`: `VARCHAR(255)`, Not Null.
+  - `description`: `TEXT`.
+  - `address`: `VARCHAR(255)`.
+  - `category_id`: `BIGINT`.
+  - `latitude`: `DOUBLE PRECISION`.
+  - `longitude`: `DOUBLE PRECISION`.
+  - `created_at`, `updated_at`: `TIMESTAMP`.
 
-- **Pagination (Phân trang)**
-  - Tất cả các API trả về danh sách (`GET /api/discoveries`, `GET /api/discoveries/{id}/comments`) phải hỗ trợ phân trang.
-  - Sử dụng query params: `page` (số trang, bắt đầu từ 0) và `size` (số lượng item mỗi trang).
-  - API response phải có cấu trúc chứa dữ liệu và thông tin phân trang:
-    ```json
-    {
-      "content": [ ... ],
-      "page": 0,
-      "size": 20,
-      "totalPages": 10,
-      "totalElements": 198
-    }
-    ```
+### 2.3. Interaction Service (`scoutli_interaction` database)
+- **Table `reviews`** (To be implemented)
+  - `id`, `content`, `rating`, `user_id`, `location_id`, timestamps.
+
+---
+
+## 3. API Specifications (RESTful)
+
+Services communicate via REST. Auth service issues JWTs signed with RS256.
+
+### 3.1. Auth Service (`/api/auth`)
+- `POST /api/auth/register`: Register a new user.
+  - Body: `{ "email": "...", "password": "...", "fullName": "..." }`
+- `POST /api/auth/login`: Login and receive JWT.
+  - Body: `{ "email": "...", "password": "..." }`
+  - Response: `{ "token": "eyJ...", "userId": 123 }`
+
+### 3.2. Discovery Service (`/api/locations`)
+- `GET /api/locations`: List all locations.
+- `GET /api/locations/{id}`: Get location details.
+- `POST /api/locations`: Create a location.
+  - Body: `{ "name": "...", "description": "...", "address": "...", ... }`
+
+---
+
+## 4. Infrastructure & Deployment Details
+
+### 4.1. Network (AWS VPC)
+- **VPC:** `10.0.0.0/16` in `ap-southeast-1`.
+- **Subnets:**
+  - **Public x3:** For Load Balancers (`kubernetes.io/role/elb=1`).
+  - **Private x3:** For EKS Nodes & RDS (`kubernetes.io/role/internal-elb=1`).
+- **Gateways:** Internet Gateway (IGW) for Public, NAT Gateways (x3) for Private outbound access.
+
+### 4.2. Kubernetes (EKS)
+- **Cluster Name:** `scoutli-cluster`.
+- **Node Group:** `t3.small` instances (Auto Scaling 1-7 nodes).
+- **Namespaces:**
+  - `scoutli-app`: Application microservices.
+  - `argocd`: CI/CD tooling.
+  - `cert-manager`: SSL management.
+  - `ingress-nginx`: Ingress Controller.
+
+### 4.3. Security
+- **SSL/TLS:** End-to-End HTTPS.
+  - **External:** Let's Encrypt (Production) certificates via Cert-Manager ClusterIssuer.
+  - **Internal:** Ingress talks to backends via HTTP or HTTPS (ArgoCD).
+  - **HSTS:** Enabled on Ingress.
+  - **Redirects:** Force SSL Redirect enabled.
+
+### 4.4. GitOps (ArgoCD)
+- **Repo:** `scoutli-gitops`.
+- **Structure:** "App of Apps" pattern using `root-app.yaml`.
+- **Apps Managed:**
+  - `scoutli-auth`
+  - `scoutli-discovery`
+  - `scoutli-interaction` (Planned)
+  - `scoutli-frontend`
+
+---
+
+## 5. Development Status (Snapshot)
+
+- **Frontend:** Deployed and Accessible (`https://www.journeywriter.space`).
+- **ArgoCD:** Deployed and Accessible (`https://argocd.journeywriter.space`).
+- **Backend Auth:** Code implemented, CI build pending deployment.
+- **Backend Discovery:** Initial migration/entity created.
+- **Infrastructure:** Fully provisioned via Terraform (currently in destroyed state for cost saving).

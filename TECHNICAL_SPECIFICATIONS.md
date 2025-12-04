@@ -25,8 +25,8 @@ The system follows a **Microservices Architecture** deployed on **AWS EKS**.
     *   **NGINX Ingress Controller:** Single entry point via AWS Network Load Balancer (NLB).
     *   **Cert-Manager:** Automates Let's Encrypt SSL certificates.
     *   **Domains:**
-        *   `www.journeywriter.space` -> Frontend
-        *   `argocd.journeywriter.space` -> ArgoCD UI
+        *   `www.journeywriter.click` -> Frontend
+        *   `argocd.journeywriter.click` -> ArgoCD UI
 
 ---
 
@@ -115,8 +115,9 @@ Services communicate via REST. Auth service issues JWTs signed with RS256.
 
 ## 5. Development Status (Snapshot)
 
-- **Frontend:** Deployed and Accessible (`https://www.journeywriter.space`).
-- **ArgoCD:** Deployed and Accessible (`https://argocd.journeywriter.space`).
+- **Frontend:** Deployed and Accessible (`https://www.journeywriter.click`).
+- **ArgoCD:** Deployed and Accessible (`https://argocd.journeywriter.click`).
 - **Backend Auth:** Code implemented, CI build pending deployment.
 - **Backend Discovery:** Initial migration/entity created.
 - **Infrastructure:** Fully provisioned via Terraform (currently in destroyed state for cost saving).
+

@@ -8,14 +8,14 @@
       - NGINX Ingress Controller (Namespace: ingress-nginx)
         - Service: LoadBalancer (NLB) - *Active Entry Point*
         - Ingress Rules:
-          - `www.journeywriter.space` -> `scoutli-frontend` (HTTP -> HTTPS redirect)
-          - `argocd.journeywriter.space` -> `argocd-server` (HTTP -> HTTPS redirect)
+          - `www.journeywriter.click` -> `scoutli-frontend` (HTTP -> HTTPS redirect)
+          - `argocd.journeywriter.click` -> `argocd-server` (HTTP -> HTTPS redirect)
       - Cert-Manager (Namespace: cert-manager)
         - ClusterIssuer: `letsencrypt-prod`
         - Certificates: `frontend-tls-secret`, `argocd-tls-secret` (Status: Ready)
       - ArgoCD (Namespace: argocd)
         - Service: `argocd-server` (ClusterIP)
-        - ConfigMap: `argocd-cm` (url: https://argocd.journeywriter.space)
+        - ConfigMap: `argocd-cm` (url: https://argocd.journeywriter.click)
         - Applications: `scoutli-frontend` (Healthy), `scoutli-auth` (Pending deployment)
       - Frontend (Namespace: scoutli-app)
         - Deployment: `scoutli-frontend`
@@ -273,9 +273,9 @@
 
 The Scoutli project has successfully transitioned to a microservices architecture on AWS EKS.
 *   **Infrastructure:** A production-grade EKS cluster (v1.34) is running with 5 worker nodes and a PostgreSQL RDS instance.
-*   **Access & Security:** NGINX Ingress Controller is serving traffic via a single public Network Load Balancer (NLB). `cert-manager` is installed and has successfully issued valid Let's Encrypt certificates for both `www.journeywriter.space` and `argocd.journeywriter.space`.
-*   **Frontend:** The Angular frontend is deployed and accessible at `https://www.journeywriter.space`.
-*   **CI/CD:** GitHub Actions builds images (Frontend built). ArgoCD is accessible at `https://argocd.journeywriter.space` (login: admin) and manages deployments.
+*   **Access & Security:** NGINX Ingress Controller is serving traffic via a single public Network Load Balancer (NLB). `cert-manager` is installed and has successfully issued valid Let's Encrypt certificates for both `www.journeywriter.click` and `argocd.journeywriter.click`.
+*   **Frontend:** The Angular frontend is deployed and accessible at `https://www.journeywriter.click`.
+*   **CI/CD:** GitHub Actions builds images (Frontend built). ArgoCD is accessible at `https://argocd.journeywriter.click` (login: admin) and manages deployments.
 *   **Backend:**
     *   `scoutli-auth-service`: Code implemented (Entity, API, TokenService) and pushed. CI build pending/in-progress.
     *   `scoutli-discovery-service`: Skeleton and Location entity/migration created. Pending commit.
@@ -284,3 +284,4 @@ The Scoutli project has successfully transitioned to a microservices architectur
 1.  **Commit & Deploy Backend:** Commit `scoutli-discovery-service`. Ensure `scoutli-auth-service` image builds and deploys via ArgoCD.
 2.  **Verify APIs:** Test the `/api/auth/register` and `/api/locations` endpoints.
 3.  **Implement Interaction Service:** Create `scoutli-interaction-service` (Reviews/Ratings).
+

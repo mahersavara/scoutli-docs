@@ -127,6 +127,8 @@ docker-compose logs kafka
 # "INFO [KafkaServer id=1] started"
 ```
 
+Done
+
 **Test nâng cao (optional):**
 
 Dùng Kafka CLI để test:

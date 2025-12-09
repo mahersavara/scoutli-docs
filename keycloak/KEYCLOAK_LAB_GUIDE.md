@@ -377,24 +377,24 @@ docker logs scoutli-keycloak --tail 20
 
 ### 5.3 Verify OIDC Discovery Endpoint
 
-```powershell
-Invoke-WebRequest -Uri "http://localhost:8180/realms/scoutli/.well-known/openid-configuration" -UseBasicParsing
+```bash
+curl -s "http://localhost:8180/realms/scoutli/.well-known/openid-configuration" | jq
 ```
 
 Expected: JSON with `issuer`, `token_endpoint`, etc.
 
 ### 5.4 Get JWT Token
 
-```powershell
-$body = @{
-    grant_type = "password"
-    client_id = "scoutli-frontend"
-    username = "test-user"
-    password = "password"
-}
-$response = Invoke-WebRequest -Uri "http://localhost:8180/realms/scoutli/protocol/openid-connect/token" -Method POST -Body $body -UseBasicParsing
-$token = ($response.Content | ConvertFrom-Json).access_token
-Write-Output $token
+```bash
+export KEYCLOAK_URL=http://localhost:8180
+export TOKEN=$(curl -s -X POST "$KEYCLOAK_URL/realms/scoutli/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password" \
+  -d "client_id=scoutli-frontend" \
+  -d "username=test-user" \
+  -d "password=password" | jq -r .access_token)
+
+echo $TOKEN
 ```
 
 ### 5.5 Access Keycloak Admin Console
@@ -402,6 +402,53 @@ Write-Output $token
 - **URL**: http://localhost:8180/admin
 - **Username**: `admin`
 - **Password**: `admin`
+
+### 5.6 Test Microservices Integration
+
+Once you have the `access_token` from Step 5.4, you can call the other services.
+
+#### 1. Test Discovery Service (Protected Endpoint)
+Try to create a discovery (Requires MEMBER or ADMIN role).
+
+```bash
+# Verify you have TOKEN exported from previous step
+curl -X POST http://localhost:8082/api/discoveries \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Hidden Cafe",
+    "description": "A quiet place",
+    "city": "Hanoi",
+    "country": "Vietnam",
+    "latitude": 21.0,
+    "longitude": 105.8
+  }' | jq
+```
+
+#### 2. Test Interaction Service (Authentication Context)
+Post a comment. The service extracts your email from the token.
+
+```bash
+# Discovery ID 1 typically created by above request
+curl -X POST http://localhost:8083/api/discoveries/1/comments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Great spot!"
+  }' | jq
+```
+
+#### 3. Test Auth Service (Internal User Data)
+Verify the Auth Service can validate credentials (used by other services or frontend login).
+
+```bash
+curl -X POST http://localhost:8081/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "password"
+  }' | jq
+```
 
 ---
 
@@ -479,18 +526,31 @@ GRANT ALL PRIVILEGES ON SCHEMA keycloak TO keycloak;
 
 ---
 
-### Bug 5: PowerShell `curl` Alias Issue
+### Bug 6: Keycloak Startup Failure on Existing Database
 
-**Symptom**: `curl` command hangs asking for URI
+**Symptom**: Keycloak container exits immediately with "FATAL: password authentication failed for user 'keycloak'".
 
-**Root Cause**: PowerShell aliases `curl` to `Invoke-WebRequest`
+**Root Cause**: When adding Keycloak to an **existing** `scoutli-db` container that was created before the Keycloak configuration was added, the `init-schemas.sql` script (which creates the `keycloak` user and schema) does NOT run again automatically. PostgreSQL only runs initialization scripts on the very first startup when the data directory is empty.
 
-**Solution**: Use explicit PowerShell cmdlet:
-```powershell
-Invoke-WebRequest -Uri "http://localhost:8180/..." -UseBasicParsing
-```
+**Solution**:
+You must manually create the user and schema in the running database.
+
+1. Exec into the database container:
+   ```bash
+   docker exec -it scoutli-db psql -U scoutli -d scoutli
+   ```
+   *(Or running the script from outside)*
+   ```bash
+   docker exec scoutli-db psql -U scoutli -d scoutli -f /docker-entrypoint-initdb.d/init-schemas.sql
+   ```
+2. Restart Keycloak:
+   ```bash
+   docker start scoutli-keycloak
+   ```
 
 ---
+
+
 
 ## 📋 Quick Reference
 
@@ -547,9 +607,13 @@ docker-compose down
 docker volume rm microservices_scoutli_db_data
 docker-compose up -d scoutli-db && sleep 10 && docker-compose up -d keycloak
 
-# Get token (PowerShell)
-$body = @{grant_type="password"; client_id="scoutli-frontend"; username="test-user"; password="password"}
-(Invoke-WebRequest -Uri "http://localhost:8180/realms/scoutli/protocol/openid-connect/token" -Method POST -Body $body -UseBasicParsing).Content | ConvertFrom-Json | Select access_token
+# Get token (Bash)
+curl -s -X POST "http://localhost:8180/realms/scoutli/protocol/openid-connect/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=password" \
+  -d "client_id=scoutli-frontend" \
+  -d "username=test-user" \
+  -d "password=password" | jq -r .access_token
 ```
 
 ---
